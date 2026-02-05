@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: system-ui, Arial; width: 400px; padding: 10px; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .pill { font-size:12px; padding:2px 8px; border-radius:999px; background:#eee; }
+    .ok { color:#0a7; font-weight:600; }
+    .warn { color:#b60; font-weight:600; }
+    .err { color:#c00; font-weight:600; }
+
+    .tabs { display:flex; gap:6px; margin-top:10px; }
+    .tabbtn { flex:1; padding:8px; border:1px solid #ddd; background:#fafafa; border-radius:10px; cursor:pointer; }
+    .tabbtn.active { background:#111; color:#fff; border-color:#111; }
+    .panel { display:none; margin-top:10px; }
+    .panel.active { display:block; }
+
+    button { width:100%; padding:10px; margin:6px 0; border-radius:10px; border:1px solid #ddd; background:#fff; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    pre { white-space:pre-wrap; word-break:break-word; background:#f5f5f5; padding:8px; border-radius:10px; max-height:180px; overflow:auto; }
+    label { display:block; font-size:12px; margin-top:8px; opacity:.8; }
+    input { width:100%; padding:8px; border:1px solid #ddd; border-radius:10px; }
+    .row { display:flex; gap:8px; }
+    .row button { width:50%; }
+    .small { font-size:12px; opacity:.85; }
+    hr { border:none; border-top:1px solid #eee; margin:10px 0; }
+
+    /* DB preview */
+    #dbPreview { background:#f7f7ff; border:1px solid #e6e6ff; padding:10px; border-radius:12px; margin-top:8px; display:none; }
+    #dbPreview .muted { opacity:.75; font-size:12px; }
+    #dbPreview .kv { font-size:12px; margin-top:4px; }
+    #dbPreview img.cover { width:62px; height:auto; border-radius:8px; border:1px solid #ddd; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div><b>BookSearch FIFO</b></div>
+    <div class="pill" id="modePill">mode: ?</div>
+  </div>
+
+  <div class="small" id="connLine">—</div>
+
+  <div class="tabs">
+    <button class="tabbtn active" data-tab="fifo">FIFO</button>
+    <button class="tabbtn" data-tab="capture">Captura</button>
+    <button class="tabbtn" data-tab="settings">Config</button>
+  </div>
+
+  <!-- FIFO -->
+  <div class="panel active" id="tab-fifo">
+    <div class="small" id="qCounts">Remaining: ? | Done: ? | Skip: ? | InProg: ? | Total: ?</div>
+    <div class="small" id="qStatus">Sin item. Tocá “Traer siguiente”.</div>
+
+    <div id="dbPreview"></div>
+
+    <pre id="qItem">(sin item)</pre>
+
+    <button id="btnNext">Traer siguiente</button>
+
+    <div class="row">
+      <button id="btnCopyIsbn" disabled>Copiar ISBN</button>
+      <button id="btnOpenSearch" disabled>Buscar en Amazon</button>
+    </div>
+
+    <div class="row">
+      <button id="btnSkip" disabled>Skip</button>
+      <button id="btnEnrichFifo" disabled>Enriquecer (item)</button>
+    </div>
+  </div>
+
+  <!-- Captura -->
+  <div class="panel" id="tab-capture">
+    <button id="btnCapture">Capturar (página actual)</button>
+
+    <div class="row">
+      <button id="btnSend" disabled>Enviar a DB</button>
+      <button id="btnEnrichSingle" disabled>Enriquecer (última)</button>
+    </div>
+
+    <div class="row">
+      <button id="btnCopy" disabled>Copiar JSON</button>
+      <button id="btnDownload" disabled>Descargar JSON</button>
+    </div>
+
+    <div class="small" id="status">Abrí un libro en Amazon (URL /dp/...).</div>
+    <pre id="out">(sin captura)</pre>
+  </div>
+
+  <!-- Settings -->
+  <div class="panel" id="tab-settings">
+    <label>Server URL</label>
+    <input id="cfgServer" placeholder="http://127.0.0.1:8765" />
+
+    <label>Usuario / Worker</label>
+    <input id="cfgUser" placeholder="PC-Rudy" />
+
+    <label>API Key (si mode=lan)</label>
+    <input id="cfgKey" type="password" placeholder="(según server)" />
+
+    <div class="row">
+      <button id="btnSaveCfg">Guardar</button>
+      <button id="btnTestCfg">Test</button>
+    </div>
+
+    <div class="small" id="modePillLine">mode: ?</div>
+
+    <div class="row">
+      <button id="btnModeLocal">Modo local</button>
+      <button id="btnModeLan">Modo lan</button>
+    </div>
+
+    <hr />
+
+    <label>Cargar cola nueva (sin apagar server)</label>
+    <input id="queueFile" type="file" accept=".txt,.csv" />
+
+    <div class="row">
+      <button id="btnUploadQueue">Upload queue</button>
+      <button id="btnResetState">Reset state</button>
+    </div>
+
+    <div class="small" id="cfgMsg">—</div>
+  </div>
+
+<script src="popup.js"></script>
+</body>
+</html>

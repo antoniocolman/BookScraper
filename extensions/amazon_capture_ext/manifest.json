@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "BookSearch FIFO (Amazon assisted)",
+  "version": "0.3.1",
+  "description": "Captura + FIFO + Enriquecimiento (Amazon) con server configurable, multiusuario y service worker (heartbeat).",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads",
+    "clipboardWrite",
+    "storage",
+    "alarms",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8765/*",
+    "http://localhost:8765/*",
+
+    "http://192.168.*.*:8765/*",
+    "http://10.*.*.*:8765/*",
+    "http://172.16.*.*:8765/*",
+    "http://172.17.*.*:8765/*",
+    "http://172.18.*.*:8765/*",
+    "http://172.19.*.*:8765/*",
+    "http://172.20.*.*:8765/*",
+    "http://172.21.*.*:8765/*",
+    "http://172.22.*.*:8765/*",
+    "http://172.23.*.*:8765/*",
+    "http://172.24.*.*:8765/*",
+    "http://172.25.*.*:8765/*",
+    "http://172.26.*.*:8765/*",
+    "http://172.27.*.*:8765/*",
+    "http://172.28.*.*:8765/*",
+    "http://172.29.*.*:8765/*",
+    "http://172.30.*.*:8765/*",
+    "http://172.31.*.*:8765/*",
+
+    "https://www.amazon.com/*"
+  ],
+  "action": {
+    "default_title": "BookSearch FIFO",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.amazon.com/*/dp/*",
+        "https://www.amazon.com/dp/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

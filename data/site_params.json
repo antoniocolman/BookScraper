@@ -1,0 +1,23 @@
+{
+  "_default": {
+    "delay": 4.0,
+    "query_delay": 2.0,
+    "max_results": 4,
+    "batch_size": 4,
+    "batch_pause": 20.0
+  },
+  "yenny_search": {
+    "delay": 2.0,
+    "query_delay": 3.0,
+    "batch_size": 4,
+    "batch_pause": 30,
+    "max_results": 4
+  },
+  "bookpeople": {
+    "batch_size": 4,
+    "batch_pause": 4.0
+  },
+  "contrapunto": { "batch_size": 4 },
+  "cuspide": { "batch_size": 4 },
+  "casa_del_libro": { "batch_size": 4, "batch_pause": 6.0 }
+}
