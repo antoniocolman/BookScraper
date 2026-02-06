@@ -284,34 +284,25 @@ def _safe_call(fn, *args, **kwargs):
     filtered = {k: v for k, v in kwargs.items() if k in params and v is not None}
     return fn(*args, **filtered)
 
-def _safe_run_single(site_entry, query, **kwargs):
-      
-    fn = site_entry.run_single
+def _invoke_site_method(site_entry, method_name: str, *args, **kwargs):
+    fn = getattr(site_entry, method_name, None)
     if not callable(fn):
-        raise RuntimeError(f"Site '{site_entry.site_id}' no tiene run_single")
+        raise RuntimeError(f"Site '{site_entry.site_id}' no tiene {method_name}")
 
     sig = inspect.signature(fn)
     params = sig.parameters
 
     if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()):
-        return fn(query, **kwargs)
+        return fn(*args, **kwargs)
 
     filtered = {k: v for k, v in kwargs.items() if k in params and v is not None}
-    return fn(query, **filtered)
+    return fn(*args, **filtered)
+
+def _safe_run_single(site_entry, query, **kwargs):
+    return _invoke_site_method(site_entry, "run_single", query, **kwargs)
 
 def _safe_run_from_file(site_entry, query_file, **kwargs):
-    fn = site_entry.run_from_file
-    if not callable(fn):
-        raise RuntimeError(f"Site '{site_entry.site_id}' no tiene run_from_file")
-
-    sig = inspect.signature(fn)
-    params = sig.parameters
-
-    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()):
-        return fn(query_file, **kwargs)
-
-    filtered = {k: v for k, v in kwargs.items() if k in params and v is not None}
-    return fn(query_file, **filtered)
+    return _invoke_site_method(site_entry, "run_from_file", query_file, **kwargs)
 
 def _read_csv_as_dicts(p: Path) -> List[Dict[str, Any]]:
     if not p.exists() or not p.is_file():
