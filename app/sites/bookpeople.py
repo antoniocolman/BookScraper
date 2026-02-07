@@ -15,11 +15,12 @@ Cambios clave:
 """
 
 from pathlib import Path
+from app.config import EXPORTS_DIR
 from typing import Optional, List, TYPE_CHECKING
 
 SITE_ID = "bookpeople"
 SITE_NAME = "BookPeople"
-DEFAULT_OUTPUT = "bookpeople_busqueda_resultados.csv"
+DEFAULT_OUTPUT = str(EXPORTS_DIR / "bookpeople_busqueda_resultados.csv")
 
 if TYPE_CHECKING:
     from .experimental.bookpeople_search_experimental import QueryItem, MatchResult

@@ -1,31 +1,4 @@
-# app/crawlers/casa_del_libro_catalog.py
 from __future__ import annotations
-
-"""
-Crawler "catálogo" para Casa del Libro.
-
-Objetivo
-- Recolectar MUCHAS fichas y upsertearlas en la DB estándar (book_std).
-- Pensado para corridas largas, con resume por "seen file" y fail log.
-
-Modos
-1) --mode sitemap (recomendado)
-   - Intenta descubrir sitemaps y extraer URLs de /libro-... y /ebook-...
-   - Es lo menos frágil (no depende de paginación HTML ni de XHR).
-
-2) --mode category (fallback)
-   - Recorre páginas de listado a partir de una seed (ej: /libros/...)
-   - Extrae links de producto desde el HTML.
-
-NOTA
-- Para mantenerlo simple, este crawler usa `app.sites.casa_del_libro.product(url)`
-  para obtener el dict normalizado (usa API Empathy + HTML de la ficha).
-- Si después querés "ultra-fast", se puede agregar un modo API-only (sin HTML).
-
-Uso típico (Windows):
-  python -m app.crawlers.casa_del_libro_catalog --mode sitemap --write-db --db-path ".\data\booksearchv2.db" --max-urls 5000
-  python -m app.crawlers.casa_del_libro_catalog --mode category --seed "https://www.casadellibro.com/libros" --write-db --db-path ".\data\booksearchv2.db" --max-urls 2000
-"""
 
 import argparse
 import gzip
@@ -38,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 from urllib.parse import urljoin, urlparse
+from app.config import STATE_DIR, DB_PATH
 
 import httpx
 
@@ -45,7 +19,6 @@ from app.storage.book_std_db import Database
 
 # Wrapper estable
 from app.sites import casa_del_libro as site
-
 
 BASE = "https://www.casadellibro.com"
 SITE_ID = "casa_del_libro"
@@ -62,14 +35,12 @@ def _canonical_url(url: str) -> str:
     url = url.split("#", 1)[0]
     return url
 
-
 def _category_json_url(category_url: str) -> str:
     """Convierte una URL de categoría a su variante JSON (?json=true)."""
     u = _canonical_url(category_url)
     if not u:
         return u
     return u + ("&" if "?" in u else "?") + "json=true"
-
 
 def _extract_from_category_json(json_text: str, base_url: str) -> Tuple[Set[str], Set[str], Set[str]]:
     """Devuelve (productos, categorías, paginación) a partir del JSON de categoría."""
@@ -113,17 +84,15 @@ def _extract_from_category_json(json_text: str, base_url: str) -> Tuple[Set[str]
 
     walk(data)
 
-    # 2) Categorías: extraemos links /libros/... (ignorando productos)
-    # Nota: usamos regex sobre el texto porque los links pueden estar en múltiples lugares.
+    # regex porque hay links en varios lugares.
     for m in re.findall(r'"/libros/[^"]+"', json_text):
         rel = m.strip('"')
         rel = _canonical_url(rel)
         if not rel:
             continue
-        # evitamos variantes con filtros tipo #json=true&...
+        # filtros para tipos #json=true&
         if "?" in rel:
             continue
-        # Sólo paths de categoría
         if _RE_PRODUCT.search(rel):
             continue
         if _RE_CAT.search(rel):
@@ -137,7 +106,6 @@ _RE_CAT = re.compile(r"^/libros(?:/|$)", re.I)
 # --- limpieza simple ---
 _RE_WS = re.compile(r"\s+")
 
-
 @dataclass
 class CrawlStats:
     discovered: int = 0
@@ -148,22 +116,18 @@ class CrawlStats:
     skipped_http: int = 0
     errors: int = 0
 
-
 def _clean(s: Any) -> str:
     if s is None:
         return ""
     return _RE_WS.sub(" ", str(s).replace("\xa0", " ")).strip()
 
-
 def _ensure_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-
 
 def _load_lines(path: Path) -> List[str]:
     if not path.exists():
         return []
     return [ln.strip() for ln in path.read_text(encoding="utf-8", errors="replace").splitlines() if ln.strip()]
-
 
 def _append_lines(path: Path, lines: Iterable[str]) -> None:
     _ensure_parent(path)
@@ -172,16 +136,8 @@ def _append_lines(path: Path, lines: Iterable[str]) -> None:
             if ln:
                 f.write(ln + "\n")
 
-
 def _is_product_url(url: str) -> bool:
-    """Devuelve True solo para fichas de producto reales.
-
-    En Casa del Libro hay muchas URLs que contienen "libro" pero NO son producto
-    (ej: /libro-y-pelicula, /serie-saga/libro-...).
-    Para evitar falsos positivos, exigimos el patrón completo:
-      /libro-<slug>/<isbn>/<id>
-      /ebook-<slug>/<isbn>/<id>
-    """
+    #obliga devolver un patron exacto
     try:
         p = urlparse(url)
     except Exception:
@@ -190,7 +146,6 @@ def _is_product_url(url: str) -> bool:
         return False
     path = p.path or ""
     return bool(_RE_PRODUCT.search(path))
-
 
 def _normalize_url(u: str) -> str:
     u = _clean(u)
@@ -201,7 +156,6 @@ def _normalize_url(u: str) -> str:
     if u.startswith("/"):
         u = urljoin(BASE, u)
     return u
-
 
 def _get_with_retries(
     client: httpx.Client,
@@ -224,7 +178,6 @@ def _get_with_retries(
                 continue
             raise last_exc
 
-
 def _iter_sitemap_loc_bytes(xml_bytes: bytes) -> Iterator[str]:
     """
     Itera <loc>...</loc> de un XML (sitemap o sitemapindex), sin cargar todo.
@@ -238,7 +191,6 @@ def _iter_sitemap_loc_bytes(xml_bytes: bytes) -> Iterator[str]:
             yield el.text.strip()
         el.clear()
 
-
 def _fetch_sitemap_bytes(client: httpx.Client, url: str, *, timeout: float, max_retries: int, retry_backoff: float) -> bytes:
     r = _get_with_retries(client, url, timeout=timeout, max_retries=max_retries, retry_backoff=retry_backoff)
     data = r.content or b""
@@ -251,7 +203,6 @@ def _fetch_sitemap_bytes(client: httpx.Client, url: str, *, timeout: float, max_
             # a veces ya viene descomprimido
             return data
     return data
-
 
 def _robots_sitemaps(client: httpx.Client, *, timeout: float, max_retries: int, retry_backoff: float) -> List[str]:
     """Extrae URLs de sitemap desde robots.txt (Sitemap: ...)."""
@@ -278,7 +229,6 @@ def _robots_sitemaps(client: httpx.Client, *, timeout: float, max_retries: int, 
             dedup.append(u)
             seen.add(u)
     return dedup
-
 
 def discover_sitemaps(client: httpx.Client, *, timeout: float, max_retries: int, retry_backoff: float) -> List[str]:
     """Descubre sitemaps probables (best-effort).
@@ -343,8 +293,6 @@ def discover_sitemaps(client: httpx.Client, *, timeout: float, max_retries: int,
             seen.add(uu)
     return out
 
-
-
 def iter_product_urls_from_sitemaps(
     client: httpx.Client,
     sitemap_urls: List[str],
@@ -378,7 +326,6 @@ def iter_product_urls_from_sitemaps(
             if _is_product_url(u):
                 yield u
                 count += 1
-
 
 def _extract_links(html: str) -> List[str]:
     """
@@ -414,7 +361,6 @@ def fetch_html(
     )
     return r.text or ""
 
-
 def extract_product_urls_from_html(html: str) -> List[str]:
     """Extrae URLs relativas de productos desde HTML de listado."""
     urls: Set[str] = set()
@@ -434,7 +380,6 @@ def extract_product_urls_from_html(html: str) -> List[str]:
                 pass
 
     return sorted(urls)
-
 
 def extract_category_urls_from_html(html: str) -> List[str]:
     """Extrae URLs relativas de categorías/listados desde HTML."""
@@ -469,7 +414,6 @@ def extract_category_urls_from_html(html: str) -> List[str]:
         urls.add(rel)
 
     return sorted(urls)
-
 
 def iter_product_urls_from_category(
     client: httpx.Client,
@@ -566,9 +510,6 @@ def iter_product_urls_from_category(
                 q.append(u)
 
         time.sleep(delay_s)
-
-
-
 
 def crawl(
     *,
@@ -703,7 +644,6 @@ def crawl(
     }
     return out
 
-
 def build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Crawler de catálogo: Casa del Libro")
     p.add_argument("--mode", choices=["sitemap", "category"], default="sitemap", help="Fuente de URLs.")
@@ -713,13 +653,12 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--timeout", type=float, default=30.0)
     p.add_argument("--max-retries", type=int, default=3)
     p.add_argument("--retry-backoff", type=float, default=1.6)
-    p.add_argument("--seen-file", default="data/state/casa_del_libro_seen_urls.txt")
-    p.add_argument("--fail-file", default="data/state/casa_del_libro_fail_urls.txt")
+    p.add_argument("--seen-file", default=str(STATE_DIR / "casa_del_libro_seen_urls.txt"))
+    p.add_argument("--fail-file", default=str(STATE_DIR / "casa_del_libro_fail_urls.txt"))
     p.add_argument("--write-db", action="store_true", help="Upsert a la DB estándar.")
-    p.add_argument("--db-path", default="data/booksearchv2.db")
+    p.add_argument("--db-path", default=str(DB_PATH))
     p.add_argument("--quiet", action="store_true")
     return p
-
 
 def main() -> None:
     args = build_argparser().parse_args()

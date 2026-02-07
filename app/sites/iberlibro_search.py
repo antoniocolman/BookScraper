@@ -6,6 +6,7 @@ Incluye throttle para evitar rate-limits y puede exportar a CSV (devuelve Path).
 """
 
 from pathlib import Path
+from app.config import EXPORTS_DIR
 from typing import Any, Dict, List, Optional
 import json
 import threading
@@ -15,7 +16,7 @@ import random
 SITE_ID = "iberlibro_search"
 SITE_NAME = "IberLibro (search)"
 CAPABILITIES = ["query", "query-file"]
-DEFAULT_OUTPUT = "data/exports/iberlibro_busqueda_resultados.csv"
+DEFAULT_OUTPUT = str(EXPORTS_DIR / "iberlibro_busqueda_resultados.csv")
 
 
 def _exp():

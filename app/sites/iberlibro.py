@@ -10,11 +10,12 @@ Este wrapper usa el módulo experimental para:
 """
 
 from pathlib import Path
+from app.config import EXPORTS_DIR
 from typing import List, Optional, Dict, Any
 
 SITE_ID = "iberlibro"
 SITE_NAME = "IberLibro"
-DEFAULT_OUTPUT = "data/exports/iberlibro_resultados.csv"
+DEFAULT_OUTPUT = str(EXPORTS_DIR / "iberlibro_resultados.csv")
 
 
 def _exp():

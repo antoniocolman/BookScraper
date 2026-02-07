@@ -1,4 +1,3 @@
-# app/crawlers/bookpeople_catalog.py
 from __future__ import annotations
 
 import argparse
@@ -11,15 +10,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import parse_qs, urljoin, urlsplit
-
 import httpx
 
-# ✅ Usamos tu DB estándar (book_std) si está en el proyecto
 try:
     from app.storage.book_std_db import connect, init_db, upsert_many  # type: ignore
 except Exception:  # pragma: no cover
     connect = init_db = upsert_many = None  # type: ignore
 
+from app.config import EXPORTS_DIR, DB_PATH, STATE_DIR
+DEFAULT_OUT_STD = str(EXPORTS_DIR / "bookpeople_catalog_std.csv")
+DEFAULT_OUT_FULL = str(EXPORTS_DIR / "bookpeople_catalog_full.csv")
+DEFAULT_DB = str(DB_PATH)
+DEFAULT_SEEN_FILE = str(STATE_DIR / "bookpeople_catalog_seen_urls.txt")
 
 # -----------------------
 # Config
@@ -42,13 +44,6 @@ STD_FIELDS = [
     "SITE",
 ]
 
-DEFAULT_SITE = "bookpeople_catalog"
-DEFAULT_OUT_STD = "data/exports/bookpeople_catalog_std.csv"
-DEFAULT_OUT_FULL = "data/exports/bookpeople_catalog_full.csv"
-DEFAULT_DB = "data/booksearchv2.db"
-DEFAULT_SEEN_FILE = "data/state/bookpeople_catalog_seen_urls.txt"
-
-
 # -----------------------
 # selectolax (opcional, recomendado)
 # `.text(strip=True)` está documentado por selectolax (strip, separator, deep, etc.). :contentReference[oaicite:0]{index=0}
@@ -57,7 +52,6 @@ try:
     from selectolax.lexbor import LexborHTMLParser as HTMLParser  # type: ignore
 except Exception:  # pragma: no cover
     HTMLParser = None  # type: ignore
-
 
 # -----------------------
 # Helpers
@@ -96,11 +90,9 @@ def _strip_tags(s: str) -> str:
     s = re.sub(r"<[^>]+>", " ", s or "")
     return _clean_text(s)
 
-
 def _isbn_from_book_href(href: str) -> str:
     m = _RE_ISBN_IN_URL.search(href or "")
     return (m.group(1) if m else "").strip()
-
 
 def _parse_price_usd(txt: str) -> Optional[float]:
     t = _clean_text(txt).replace("$", "").replace(",", "")
@@ -112,11 +104,9 @@ def _parse_price_usd(txt: str) -> Optional[float]:
     except Exception:
         return None
 
-
 def _catalog_url(page: int) -> str:
     # page es 0-index (como Drupal)
     return f"{BASE}{CATALOG_PATH}?page={page}"
-
 
 def _make_client() -> httpx.Client:
     headers = {
@@ -131,7 +121,6 @@ def _make_client() -> httpx.Client:
         "Pragma": "no-cache",
     }
     return httpx.Client(headers=headers, http2=True, follow_redirects=True, timeout=30.0)
-
 
 def _get_with_retries(
     client: httpx.Client,
@@ -160,7 +149,6 @@ def _get_with_retries(
             raise RuntimeError(f"No se pudo descargar {url}. Último error: {last_exc}") from last_exc
     raise RuntimeError("Unreachable")
 
-
 def _detect_last_page(html: str) -> int:
     """
     Devuelve el último índice de página (0-index). Ej: si hay 20 páginas, devuelve 19.
@@ -188,7 +176,6 @@ def _detect_last_page(html: str) -> int:
 
     # 3) si no encontramos, asumimos solo page=0
     return 0
-
 
 def _parse_page_items_selectolax(html: str) -> List[Dict[str, Any]]:
     tree = HTMLParser(html)
@@ -254,7 +241,6 @@ def _parse_page_items_selectolax(html: str) -> List[Dict[str, Any]]:
 
     return out
 
-
 def _parse_page_items_regex(html: str) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
 
@@ -311,12 +297,10 @@ def _parse_page_items_regex(html: str) -> List[Dict[str, Any]]:
 
     return out
 
-
 def parse_catalog_page(html: str) -> List[Dict[str, Any]]:
     if HTMLParser is not None:
         return _parse_page_items_selectolax(html)
     return _parse_page_items_regex(html)
-
 
 def load_seen_urls(path: Path) -> Set[str]:
     if not path.exists():
@@ -328,19 +312,13 @@ def load_seen_urls(path: Path) -> Set[str]:
             seen.add(t)
     return seen
 
-
 def append_seen_urls(path: Path, urls: List[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8", newline="\n") as f:
         for u in urls:
             f.write(u + "\n")
 
-
 def to_std_row(item: Dict[str, Any], *, site: str) -> Dict[str, Any]:
-    """
-    Genera fila estándar para tu `book_std` + extras en raw_json.
-    OJO: book_std no tiene columna precio, pero lo dejamos en extras para raw_json.
-    """
     isbn = (item.get("isbn") or "").strip()
     titulo = (item.get("title") or "").strip()
     autor = (item.get("author") or "").strip()
@@ -360,7 +338,6 @@ def to_std_row(item: Dict[str, Any], *, site: str) -> Dict[str, Any]:
         "URL": url,
         "URL PORTADA": portada,
         "SITE": site,
-        # extras (van a raw_json si insertás directo con upsert_many)
         "precio_usd": item.get("price_usd"),
         "label": item.get("label"),
         "availability": item.get("availability"),
@@ -368,7 +345,6 @@ def to_std_row(item: Dict[str, Any], *, site: str) -> Dict[str, Any]:
         "add_to_cart": item.get("add_to_cart"),
     }
     return row
-
 
 def write_csv(path: Path, rows: List[Dict[str, Any]], *, mode: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -388,7 +364,6 @@ def write_csv(path: Path, rows: List[Dict[str, Any]], *, mode: str) -> None:
         w.writeheader()
         for r in rows:
             w.writerow(r)
-
 
 def crawl_catalog(
     *,
@@ -467,7 +442,6 @@ def crawl_catalog(
 
     return rows, last_page_detected
 
-
 def maybe_upsert_db(db_path: str, rows: List[Dict[str, Any]]) -> None:
     if connect is None or init_db is None or upsert_many is None:
         print("[WARN] No se pudo importar app.storage.book_std_db. Se omite insert a DB.")
@@ -484,7 +458,6 @@ def maybe_upsert_db(db_path: str, rows: List[Dict[str, Any]]) -> None:
         print(f"[OK] DB upsert -> {db_path} | filas={len(rows)}")
     finally:
         con.close()
-
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Crawler catálogo BookPeople (/books?page=N)")
@@ -532,7 +505,6 @@ def main() -> None:
 
     if not args.no_db:
         maybe_upsert_db(args.db, rows)
-
 
 if __name__ == "__main__":
     main()

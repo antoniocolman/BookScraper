@@ -10,6 +10,7 @@ import os
 import sys
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
+from app.config import DB_PATH
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
@@ -344,7 +345,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--limit", type=int, default=None)
 
     p_run.add_argument("--write-db", action="store_true")
-    p_run.add_argument("--db-path", default=r".\data\booksearchv2.db")
+    p_run.add_argument("--db-path", default=str(DB_PATH))
 
     p_run.set_defaults(func=cmd_run)
 

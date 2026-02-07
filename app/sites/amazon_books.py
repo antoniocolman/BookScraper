@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from app.config import EXPORTS_DIR
 from typing import Any, List, Optional
 import random
 import threading
@@ -9,7 +10,7 @@ import time
 
 SITE_ID = "amazon_books"
 SITE_NAME = "Amazon Books (best-effort)"
-DEFAULT_OUTPUT = "data/exports/amazon_books_resultados.csv"
+DEFAULT_OUTPUT = str(EXPORTS_DIR / "amazon_books_resultados.csv")
 
 # Throttle global (para que si el motor usa el site varias veces, comparta ritmo)
 _LOCK = threading.Lock()

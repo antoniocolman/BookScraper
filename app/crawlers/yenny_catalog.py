@@ -1,4 +1,3 @@
-# app/crawlers/yenny_catalog.py
 from __future__ import annotations
 
 import csv
@@ -11,6 +10,8 @@ import httpx
 
 from app.sites.experimental import yenny_core as core
 from app.storage.book_std_db import connect, init_db, upsert_many
+
+from app.config import DB_PATH, STATE_DIR
 
 
 STD_HEADER = [
@@ -245,7 +246,7 @@ def crawl(
     seen_file: Optional[str] = None,
     reset_seen: bool = False,
     write_db: bool = False,
-    db_path: str = "data/booksearchv2.db",
+    db_path: str = str(DB_PATH),
     quiet: bool = False,
     # NUEVOS: para que main.py no rompa
     limit: int = 12,
@@ -263,12 +264,12 @@ def crawl(
     if seen_file:
         seen_path = Path(seen_file)
     else:
-        seen_path = Path("data/state/yenny_seen_urls.txt")
+        seen_path = STATE_DIR / "yenny_seen_urls.txt"
 
     if fail_file:
         fail_path = Path(fail_file)
     else:
-        fail_path = Path("data/state/yenny_failed_urls.txt")
+        fail_path = STATE_DIR / "yenny_failed_urls.txt"
 
     if reset_seen:
         _ensure_parent(seen_path)

@@ -1,4 +1,3 @@
-# app/crawlers/el_lector_catalog.py
 from __future__ import annotations
 
 import csv
@@ -13,6 +12,8 @@ import httpx
 from app.sites import el_lector
 from app.standard import STD_FIELDS, to_standard_row
 from app.storage.book_std_db import connect, init_db, upsert_many
+
+from app.config import DB_PATH
 
 BASE = "https://www.ellector.com.py"
 
@@ -202,7 +203,7 @@ def crawl(
     max_products: int = 0,  # 0=sin límite (se aplica sobre written_total)
     verbose: bool = True,
     write_db: bool = False,
-    db_path: str = r".\data\booksearchv2.db",
+    db_path: str = str(DB_PATH),
     flush_every: int = 50,
     max_retries: int = 2,
     retry_backoff: float = 1.7,

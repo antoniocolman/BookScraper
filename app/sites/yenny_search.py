@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from app.config import EXPORTS_DIR
 from typing import Any, List, Optional, TYPE_CHECKING
 import time
 import random
@@ -9,7 +10,7 @@ import threading
 SITE_ID = "yenny_search"
 SITE_NAME = "Yenny (search)"
 CAPABILITIES = ["query", "query-file"]
-DEFAULT_OUTPUT = "yenny_busqueda_resultados.csv"
+DEFAULT_OUTPUT = str(EXPORTS_DIR / "yenny_busqueda_resultados.csv")
 
 # Para que Pylance no se queje con "Variable not allowed in type expression"
 if TYPE_CHECKING:
