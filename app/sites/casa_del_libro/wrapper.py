@@ -37,15 +37,15 @@ Este sitio usa un módulo experimental basado en:
 _RE_WS = re.compile(r"\s+")
 
 
-def _exp():
-    """Import lazy del módulo experimental."""
+def _engine():
+    """Import lazy del engine (search/detail) para no romper el discovery."""
     try:
-        from app.sites.experimental import casa_del_libro_experimental as cdl  # type: ignore
+        from .engines import search as cdl  # type: ignore
         return cdl
     except Exception as e:  # pragma: no cover
         raise RuntimeError(
-            "No pude importar app.sites.experimental.casa_del_libro_experimental. "
-            "Asegurate de que existe y que sus dependencias estén instaladas. "
+            "No pude importar app.sites.casa_del_libro.engines.search. "
+            "Asegurate de que existe y que sus dependencias estén instaladas (httpx, selectolax). "
             f"Detalle: {e}"
         )
 
@@ -80,7 +80,7 @@ def search(q: str, *, rows: int = 24) -> List[str]:
     if not q:
         return []
 
-    cdl = _exp()
+    cdl = _engine()
 
     with cdl.make_client() as client:
         if cdl.is_isbn_query(q):
@@ -111,7 +111,7 @@ def product(url: str, *, include_raw_api: bool = False) -> Dict[str, Any]:
     if not url:
         return {}
 
-    cdl = _exp()
+    cdl = _engine()
     data: Dict[str, Any] = dict(cdl.build_product(url) or {})
 
     raw_api = data.get("raw_api")
@@ -286,3 +286,14 @@ def run_from_file(
         rows.extend(items)
 
     return rows
+
+__all__ = [
+    "SITE_ID",
+    "SITE_NAME",
+    "CAPABILITIES",
+    "HELP",
+    "search",
+    "product",
+    "run_single",
+    "run_from_file",
+]
