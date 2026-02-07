@@ -12,7 +12,6 @@ from bs4 import BeautifulSoup
 
 BASE_URL = "https://www.yenny-elateneo.com"
 
-# User-Agent "realista" ayuda bastante con 403/429 en algunos hosts.
 DEFAULT_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -23,7 +22,6 @@ DEFAULT_HEADERS = {
     "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
     "Connection": "keep-alive",
 }
-
 
 def normalize_url(href: str, base_url: str = BASE_URL) -> str:
     """Normaliza href relativos y protocolless //..."""

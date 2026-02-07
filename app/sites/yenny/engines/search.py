@@ -13,7 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 from app.utils.common import normalize_isbn
-from . import yenny_core as core  # shared helpers
+from . import core  # shared helpers
 
 
 BASE_URL = "https://www.yenny-elateneo.com"

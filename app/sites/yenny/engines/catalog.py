@@ -39,7 +39,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup, NavigableString, Tag
-from . import yenny_core as core  # shared helpers
+from . import core  # shared helpers
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ---------------------------------------------------------------------------
@@ -439,10 +439,7 @@ def _extract_image_url(soup: BeautifulSoup, page_url: str) -> Optional[str]:
 
 
 def parse_product_page(html: str, url: str, source: str = "yenny_elateneo") -> BookRecord:
-    """Parsea un producto usando el parser compartido y lo adapta al BookRecord de este módulo.
-
-    Nota: este módulo es experimental (catálogo).
-    """
+    """Parsea un producto usando el parser compartido y lo adapta al BookRecord de este módulo."""
     data = core.parse_product_page(html, url)
 
     return BookRecord(
@@ -752,7 +749,6 @@ def main() -> None:
         download_images(records_list, session, images_dir)
 
     session.close()
-
 
 if __name__ == "__main__":
     main()
