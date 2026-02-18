@@ -21,6 +21,9 @@ Comandos equivalentes en CLI (recomendado)
 - `export --view`: exporta views (ej. `book_master`).
 - `db --list-views`: lista views de la DB.
 
+SQL views (SQLite)
+- `app/sql/book_master_views.sql`: crea solo views (sin crear tabla) para SQLite.
+
 API (FastAPI) helpers
 - `start_api.ps1`: levanta la API FastAPI (`API_HOST`/`API_PORT`).
 - `test_api.ps1`: prueba `/health`.

@@ -6,8 +6,10 @@ if ($args.Length -lt 1) {
   exit 1
 }
 
-$hostUrl = $env:API_HOST -ne $null ? $env:API_HOST : "127.0.0.1"
-$port = $env:API_PORT -ne $null ? $env:API_PORT : "8080"
+if (-not $env:API_HOST) { $env:API_HOST = "127.0.0.1" }
+if (-not $env:API_PORT) { $env:API_PORT = "8080" }
+$hostUrl = $env:API_HOST
+$port = $env:API_PORT
 $base = "http://$hostUrl`:$port"
 $isbn = $args[0]
 
