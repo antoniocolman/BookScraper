@@ -1,7 +1,7 @@
-// popup.js
-const DEFAULT_API_BASE = "http://127.0.0.1:8765";
+﻿// popup.js
+const DEFAULT_API_BASE = "http://127.0.0.1:8765";\nconst DEFAULT_API_V2_BASE = "http://127.0.0.1:8080";
 
-let apiBase = DEFAULT_API_BASE;
+let apiBase = DEFAULT_API_BASE;\nlet apiBaseV2 = DEFAULT_API_V2_BASE;
 let userName = "PC";
 let apiKey = "";
 
@@ -11,17 +11,13 @@ let currentLeaseId = null;
 let currentLeaseExpiresAt = null;
 let stats = null;
 
-// Captura (último JSON capturado)
+// Captura (Ãºltimo JSON capturado)
 let lastData = null;
 
 const $ = (id) => document.getElementById(id);
 
 // ------------------ helpers ------------------
-function cleanServerUrl(u) {
-  u = (u || "").trim();
-  if (!u) return DEFAULT_API_BASE;
-  return u.replace(/\/+$/, "");
-}
+function cleanServerUrl(u, fallback) {\n  u = (u || "").trim();\n  if (!u) return fallback || DEFAULT_API_BASE;\n  return u.replace(/\\/+$/, "");\n}
 function normIsbn(s) {
   return (s || "").toUpperCase().replace(/[^0-9X]/g, "");
 }
@@ -33,6 +29,12 @@ function authHeaders(extra = {}) {
 }
 async function apiFetch(path, opts = {}) {
   const url = `${apiBase}${path}`;
+  const headers = Object.assign({ "Content-Type": "application/json" }, authHeaders(opts.headers || {}));
+  return fetch(url, Object.assign({}, opts, { headers }));
+}
+
+async function apiFetchV2(path, opts = {}) {
+  const url = `${apiBaseV2}${path}`;
   const headers = Object.assign({ "Content-Type": "application/json" }, authHeaders(opts.headers || {}));
   return fetch(url, Object.assign({}, opts, { headers }));
 }
@@ -51,6 +53,10 @@ function bgSend(type, payload = {}) {
 function setConnLine(txt, cls = "") {
   $("connLine").className = "small " + cls;
   $("connLine").textContent = txt;
+}
+function setApiConnLine(txt, cls = "") {
+  $("apiConnLine").className = "small " + cls;
+  $("apiConnLine").textContent = txt;
 }
 function setCfgMsg(txt, cls = "") {
   $("cfgMsg").className = "small " + cls;
@@ -89,15 +95,15 @@ function refreshUI() {
 
   // Captura
   $("out").textContent = lastData ? JSON.stringify(lastData, null, 2) : "(sin captura)";
-  $("btnSend").disabled = !lastData;
-  $("btnEnrichSingle").disabled = !lastData;
+  $("btnSend").disabled = !lastData;\n  $("btnSendV2").disabled = !lastData;
+  $("btnEnrichSingle").disabled = !lastData;\n  $("btnFetchMissingItem").disabled = !hasItem;
   $("btnCopy").disabled = !lastData;
   $("btnDownload").disabled = !lastData;
 
   // Match indicador (si hay FIFO + captura)
   if (hasItem && lastData) {
-    if (canEnrichWithFIFO()) setQStatus("Captura coincide con FIFO ✅", "ok");
-    else setQStatus("Captura NO coincide con FIFO ⚠️", "warn");
+    if (canEnrichWithFIFO()) setQStatus("Captura coincide con FIFO âœ…", "ok");
+    else setQStatus("Captura NO coincide con FIFO âš ï¸", "warn");
   }
 }
 
@@ -114,23 +120,23 @@ function setupTabs() {
 
 // ------------------ config + persistence ------------------
 async function loadCfg() {
-  const cfg = await chrome.storage.local.get(["apiBase", "userName", "apiKey", "lastData"]);
-  apiBase = cleanServerUrl(cfg.apiBase || DEFAULT_API_BASE);
+  const cfg = await chrome.storage.local.get(["apiBase", "apiBaseV2", "userName", "apiKey", "lastData"]);
+  apiBase = cleanServerUrl(cfg.apiBase || DEFAULT_API_BASE, DEFAULT_API_BASE);\n  apiBaseV2 = cleanServerUrl(cfg.apiBaseV2 || DEFAULT_API_V2_BASE, DEFAULT_API_V2_BASE);
   userName = (cfg.userName || "PC").trim() || "PC";
   apiKey = (cfg.apiKey || "").trim();
   lastData = cfg.lastData || null;
 
-  $("cfgServer").value = apiBase;
+  $("cfgServer").value = apiBase;\n  $("cfgServerV2").value = apiBaseV2;
   $("cfgUser").value = userName;
   $("cfgKey").value = apiKey;
 }
 
 async function saveCfg() {
-  apiBase = cleanServerUrl($("cfgServer").value);
+  apiBase = cleanServerUrl($("cfgServer").value, DEFAULT_API_BASE);\n  apiBaseV2 = cleanServerUrl($("cfgServerV2").value, DEFAULT_API_V2_BASE);
   userName = ($("cfgUser").value || "PC").trim() || "PC";
   apiKey = ($("cfgKey").value || "").trim();
 
-  await chrome.storage.local.set({ apiBase, userName, apiKey });
+  await chrome.storage.local.set({ apiBase, apiBaseV2, userName, apiKey });
   // background escucha storage.onChanged, pero igual forzamos un refresh de state
   await bgSend("GET_STATE");
 }
@@ -176,12 +182,12 @@ function canEnrichWithFIFO() {
 async function claimNext() {
   setQStatus("Claiming...");
   const r = await bgSend("CLAIM_NEXT");
-  if (!r.ok) return setQStatus(`❌ Claim falló: ${r.error || ""}`, "err");
+  if (!r.ok) return setQStatus(`âŒ Claim fallÃ³: ${r.error || ""}`, "err");
   if (r.stats) setCounts(r.stats);
   await syncFromBG();
 
-  if (r.done) return setQStatus("✅ Cola terminada", "ok");
-  if (currentItem?.isbn) setQStatus(`Item listo ✅ (${currentItem.isbn})`, "ok");
+  if (r.done) return setQStatus("âœ… Cola terminada", "ok");
+  if (currentItem?.isbn) setQStatus(`Item listo âœ… (${currentItem.isbn})`, "ok");
   refreshUI();
 }
 
@@ -189,41 +195,49 @@ async function skipItem() {
   if (!currentLeaseId) return;
   setQStatus("Skipping...");
   const r = await bgSend("SKIP");
-  if (!r.ok) return setQStatus(`❌ Skip falló: ${r.error || ""}`, "err");
+  if (!r.ok) return setQStatus(`âŒ Skip fallÃ³: ${r.error || ""}`, "err");
   await syncFromBG();
   await fetchStats();
   refreshUI();
-  setQStatus("✅ Skipped", "ok");
+  setQStatus("âœ… Skipped", "ok");
 }
 
 async function enrichFifo() {
   if (!lastData || !currentItem || !currentLeaseId) return;
-  if (!canEnrichWithFIFO()) return setQStatus("❌ No coincide con FIFO", "err");
+  if (!canEnrichWithFIFO()) return setQStatus("âŒ No coincide con FIFO", "err");
 
   setQStatus("Enriqueciendo + DONE...");
   const r = await bgSend("ENRICH_AND_DONE", { data: lastData, targetIsbn: currentItem.isbn });
-  if (!r.ok) return setQStatus(`❌ Enrich falló: ${r.error || ""}`, "err");
+  if (!r.ok) return setQStatus(`âŒ Enrich fallÃ³: ${r.error || ""}`, "err");
 
   await syncFromBG();
   await fetchStats();
   refreshUI();
-  setQStatus(`✅ Enriquecido (rows=${r.enrich?.enriched_rows ?? "?"})`, "ok");
+  setQStatus(`âœ… Enriquecido (rows=${r.enrich?.enriched_rows ?? "?"})`, "ok");
 }
 
 async function sendToDb() {
   if (!lastData) return;
   setStatus("Enviando a DB...");
   const r = await bgSend("INGEST", { data: lastData });
-  if (!r.ok) return setStatus(`❌ Ingest falló: ${r.error || ""}`, "err");
-  setStatus(`✅ DB OK (ins=${r.resp?.inserted ?? 0}, upd=${r.resp?.updated ?? 0})`, "ok");
+  if (!r.ok) return setStatus(`âŒ Ingest fallÃ³: ${r.error || ""}`, "err");
+  setStatus(`âœ… DB OK (ins=${r.resp?.inserted ?? 0}, upd=${r.resp?.updated ?? 0})`, "ok");
+}
+
+async function sendToApiV2() {
+  if (!lastData) return;
+  setStatus("Enviando a API...");
+  const r = await bgSend("CAPTURE_V2", { data: lastData });
+  if (!r.ok) return setStatus(`âŒ API fallÃ³: ${r.error || ""}`, "err");
+  setStatus(`âœ… API OK (ins=${r.resp?.inserted ?? 0})`, "ok");
 }
 
 async function enrichSingle() {
   if (!lastData) return;
-  setStatus("Enriqueciendo (última)...");
+  setStatus("Enriqueciendo (Ãºltima)...");
   const r = await bgSend("ENRICH_ONLY", { data: lastData, targetIsbn: normIsbn(lastData.ISBN) });
-  if (!r.ok) return setStatus(`❌ Enrich falló: ${r.error || ""}`, "err");
-  setStatus(`✅ Enrich OK (rows=${r.enrich?.enriched_rows ?? "?"})`, "ok");
+  if (!r.ok) return setStatus(`âŒ Enrich fallÃ³: ${r.error || ""}`, "err");
+  setStatus(`âœ… Enrich OK (rows=${r.enrich?.enriched_rows ?? "?"})`, "ok");
 }
 
 // ------------------ Amazon helpers (same tab) ------------------
@@ -291,27 +305,84 @@ function renderDbPreview(resp) {
   const date = (b["FECHA PUBLICACION"] || "").trim();
 
   const missing = Array.isArray(resp.missing_fields) ? resp.missing_fields : [];
-  const missingTxt = missing.length ? `Faltan: ${missing.join(", ")}` : "Completo ✅";
+  const missingTxt = missing.length ? `Faltan: ${missing.join(", ")}` : "Completo âœ…";
 
   box.innerHTML = `
     <div style="display:flex; gap:10px; align-items:flex-start;">
       ${cover ? `<img class="cover" src="${cover}" alt="cover">` : ""}
       <div style="flex:1">
-        <div style="font-weight:700; font-size:13px;">${title || "(sin título)"}</div>
+        <div style="font-weight:700; font-size:13px;">${title || "(sin tÃ­tulo)"}</div>
         <div class="muted">${author || ""}</div>
-        <div class="kv"><b>Editorial:</b> ${publisher || "—"}</div>
-        <div class="kv"><b>Idioma:</b> ${lang || "—"} <b>•</b> <b>Páginas:</b> ${pages || "—"}</div>
-        <div class="kv"><b>Encuad.:</b> ${bind || "—"} <b>•</b> <b>Fecha:</b> ${date || "—"}</div>
+        <div class="kv"><b>Editorial:</b> ${publisher || "â€”"}</div>
+        <div class="kv"><b>Idioma:</b> ${lang || "â€”"} <b>â€¢</b> <b>PÃ¡ginas:</b> ${pages || "â€”"}</div>
+        <div class="kv"><b>Encuad.:</b> ${bind || "â€”"} <b>â€¢</b> <b>Fecha:</b> ${date || "â€”"}</div>
         <div class="kv"><b>${missingTxt}</b></div>
       </div>
     </div>
   `;
 }
+function renderApiMissing(label, items) {
+  const box = $("apiMissingBox");
+  if (!box) return;
+  if (!items || !items.length) {
+    box.textContent = `${label}: (sin faltantes)`;
+    return;
+  }
+  const list = items.join(", ");
+  box.textContent = `${label}: ${list}`;
+}
+
+async function fetchApiMissing(limit = 50) {
+  try {
+    const r = await apiFetchV2(`/missing?limit=${limit}`, { method: "GET" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) {
+      renderApiMissing("API missing", []);
+      return false;
+    }
+    const rows = j.rows || [];
+    if (!rows.length) {
+      renderApiMissing("API missing", []);
+      return true;
+    }
+    const first = rows[0] || {};
+    const miss = first.missing_fields || [];
+    const label = `API missing (1er item ${first.isbn || ""} ${first.site || ""})`.trim();
+    renderApiMissing(label, miss);
+    return true;
+  } catch {
+    renderApiMissing("API missing", []);
+    return false;
+  }
+}
+
+async function fetchApiMissingForIsbn(isbn) {
+  const box = $("apiMissingBox");
+  if (!box) return false;
+  if (!isbn) {
+    renderApiMissing("API missing", []);
+    return false;
+  }
+  try {
+    const r = await apiFetchV2(`/isbn/${encodeURIComponent(isbn)}`, { method: "GET" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok || !j.rows || !j.rows.length) {
+      renderApiMissing(`API missing (${isbn})`, []);
+      return false;
+    }
+    const miss = j.rows[0].missing_fields || [];
+    renderApiMissing(`API missing (${isbn})`, miss);
+    return true;
+  } catch {
+    renderApiMissing(`API missing (${isbn})`, []);
+    return false;
+  }
+}
 
 // ------------------ capture (content script) ------------------
 async function captureCurrentPage() {
   const tab = await getActiveTab();
-  if (!tab?.id) return setStatus("❌ No tab", "err");
+  if (!tab?.id) return setStatus("âŒ No tab", "err");
 
   try {
     const resp = await new Promise((resolve) => {
@@ -323,16 +394,16 @@ async function captureCurrentPage() {
     });
 
     if (!resp.ok || !resp.data) {
-      setStatus("⚠️ No pude capturar. ¿Estás en /dp/...?", "warn");
+      setStatus("âš ï¸ No pude capturar. Â¿EstÃ¡s en /dp/...?", "warn");
       return;
     }
 
     lastData = resp.data;
     await saveLastData();
-    setStatus("✅ Capturado", "ok");
+    setStatus("âœ… Capturado", "ok");
     refreshUI();
   } catch {
-    setStatus("❌ Error capturando (ver consola)", "err");
+    setStatus("âŒ Error capturando (ver consola)", "err");
   }
 }
 
@@ -360,14 +431,29 @@ async function testConnection() {
     const r = await apiFetch("/health", { method: "GET" });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j.ok) {
-      setConnLine("❌ No conecta", "err");
+      setConnLine("âŒ No conecta", "err");
       return false;
     }
     $("modePill").textContent = `mode: ${j.mode}`;
-    setConnLine(`✅ ${new URL(apiBase).host} | user=${userName}`, "ok");
+    setConnLine(`âœ… ${new URL(apiBase).host} | user=${userName}`, "ok");
     return true;
   } catch {
-    setConnLine("❌ No conecta", "err");
+    setConnLine("âŒ No conecta", "err");
+    return false;
+  }
+}
+async function testApiV2() {
+  try {
+    const r = await apiFetchV2("/health", { method: "GET" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) {
+      setApiConnLine("❌ API no conecta", "err");
+      return false;
+    }
+    setApiConnLine(`✅ API OK (${new URL(apiBaseV2).host})`, "ok");
+    return true;
+  } catch {
+    setApiConnLine("❌ API no conecta", "err");
     return false;
   }
 }
@@ -384,23 +470,23 @@ async function setServerMode(mode) {
   try {
     const r = await apiFetch("/admin/mode", { method: "POST", body: JSON.stringify({ mode }) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j.ok) return setCfgMsg("❌ No pude cambiar modo (¿admin/key?)", "warn");
-    setCfgMsg(`✅ Modo: ${j.mode}`, "ok");
+    if (!r.ok || !j.ok) return setCfgMsg("âŒ No pude cambiar modo (Â¿admin/key?)", "warn");
+    setCfgMsg(`âœ… Modo: ${j.mode}`, "ok");
     await refreshModePill();
   } catch {
-    setCfgMsg("❌ Error cambiando modo", "warn");
+    setCfgMsg("âŒ Error cambiando modo", "warn");
   }
 }
 
 // ------------------ events ------------------
 $("btnNext").addEventListener("click", claimNext);
 $("btnSkip").addEventListener("click", skipItem);
-$("btnEnrichFifo").addEventListener("click", enrichFifo);
+$("btnEnrichFifo").addEventListener("click", enrichFifo);\n\n$("btnFetchMissing").addEventListener("click", async () => {\n  await fetchApiMissing(50);\n});\n$("btnFetchMissingItem").addEventListener("click", async () => {\n  await fetchApiMissingForIsbn(currentItem?.isbn);\n});
 
 $("btnCopyIsbn").addEventListener("click", async () => {
   if (!currentItem?.isbn) return;
   const ok = await copyText(currentItem.isbn);
-  setQStatus(ok ? "✅ ISBN copiado" : "❌ No pude copiar", ok ? "ok" : "err");
+  setQStatus(ok ? "âœ… ISBN copiado" : "âŒ No pude copiar", ok ? "ok" : "err");
 });
 
 $("btnOpenSearch").addEventListener("click", async () => {
@@ -409,13 +495,13 @@ $("btnOpenSearch").addEventListener("click", async () => {
 });
 
 $("btnCapture").addEventListener("click", captureCurrentPage);
-$("btnSend").addEventListener("click", sendToDb);
+$("btnSend").addEventListener("click", sendToDb);\n$("btnSendV2").addEventListener("click", sendToApiV2);
 $("btnEnrichSingle").addEventListener("click", enrichSingle);
 
 $("btnCopy").addEventListener("click", async () => {
   if (!lastData) return;
   const ok = await copyText(JSON.stringify(lastData, null, 2));
-  setStatus(ok ? "✅ Copiado" : "❌ No pude copiar", ok ? "ok" : "err");
+  setStatus(ok ? "âœ… Copiado" : "âŒ No pude copiar", ok ? "ok" : "err");
 });
 $("btnDownload").addEventListener("click", () => {
   if (lastData) downloadJson(lastData, "amazon_last.json");
@@ -428,7 +514,7 @@ $("btnSaveCfg").addEventListener("click", async () => {
   await syncFromBG();
   await fetchStats();
   refreshUI();
-  setCfgMsg("✅ Guardado", "ok");
+  setCfgMsg("âœ… Guardado", "ok");
 });
 
 $("btnTestCfg").addEventListener("click", async () => {
@@ -443,16 +529,16 @@ $("btnModeLan").addEventListener("click", () => setServerMode("lan"));
 $("btnResetState").addEventListener("click", async () => {
   const r = await apiFetch("/admin/reset_state", { method: "POST", body: JSON.stringify({ confirm: true }) });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j.ok) return setCfgMsg("❌ No pude resetear (¿admin/key?)", "warn");
+  if (!r.ok || !j.ok) return setCfgMsg("âŒ No pude resetear (Â¿admin/key?)", "warn");
   await bgSend("FETCH_STATS");
   await syncFromBG();
   refreshUI();
-  setCfgMsg("✅ Estado reseteado", "ok");
+  setCfgMsg("âœ… Estado reseteado", "ok");
 });
 
 $("btnUploadQueue").addEventListener("click", async () => {
   const f = $("queueFile").files?.[0];
-  if (!f) return setCfgMsg("Elegí un .txt o .csv primero", "warn");
+  if (!f) return setCfgMsg("ElegÃ­ un .txt o .csv primero", "warn");
   const text = await f.text();
 
   const r = await apiFetch("/admin/upload_queue", {
@@ -460,12 +546,12 @@ $("btnUploadQueue").addEventListener("click", async () => {
     body: JSON.stringify({ text, reset_state: true }),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j.ok) return setCfgMsg("❌ Upload falló (¿admin/key?)", "warn");
+  if (!r.ok || !j.ok) return setCfgMsg("âŒ Upload fallÃ³ (Â¿admin/key?)", "warn");
 
   await bgSend("FETCH_STATS");
   await syncFromBG();
   refreshUI();
-  setCfgMsg(`✅ Cola cargada: items=${j.items}`, "ok");
+  setCfgMsg(`âœ… Cola cargada: items=${j.items}`, "ok");
 });
 
 // ------------------ init ------------------
@@ -478,3 +564,12 @@ $("btnUploadQueue").addEventListener("click", async () => {
   await syncFromBG();
   await fetchStats();
 })();
+
+
+
+
+
+
+
+
+

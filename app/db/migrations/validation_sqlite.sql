@@ -1,4 +1,4 @@
-﻿-- Validation queries (counts and integrity)
+﻿-- Validation queries (SQLite, no views)
 
 -- Total rows
 SELECT COUNT(*) AS total_rows FROM book_std;
@@ -17,7 +17,3 @@ SELECT COUNT(*) AS missing_isbn FROM book_std WHERE isbn IS NULL OR TRIM(isbn) =
 SELECT COUNT(*) AS missing_titulo FROM book_std WHERE titulo IS NULL OR TRIM(titulo) = '';
 SELECT COUNT(*) AS missing_autor FROM book_std WHERE autor IS NULL OR TRIM(autor) = '';
 SELECT COUNT(*) AS missing_sinopsis FROM book_std WHERE sinopsis IS NULL OR TRIM(sinopsis) = '';
-
--- View counts (if views exist)
-SELECT COUNT(*) AS book_isbn_site_rows FROM book_isbn_site;
-SELECT COUNT(*) AS book_master_rows FROM book_master;

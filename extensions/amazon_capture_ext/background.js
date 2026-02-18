@@ -1,12 +1,20 @@
 // background.js (MV3 service worker)
 // Mantiene lease/heartbeat aunque cierres el popup.
+// Ejemplo (FastAPI):
+// fetch("http://127.0.0.1:8080/captures", {
+//   method: "POST",
+//   headers: { "Content-Type": "application/json", "X-API-Key": "<API_KEY>" },
+//   body: JSON.stringify({ data: capture })
+// });
 
 const DEFAULT_API_BASE = "http://127.0.0.1:8765";
+const DEFAULT_API_V2_BASE = "http://127.0.0.1:8080";
 
-const CFG_KEYS = ["apiBase", "userName", "apiKey"];
+const CFG_KEYS = ["apiBase", "apiBaseV2", "userName", "apiKey"];
 
 let cfg = {
   apiBase: DEFAULT_API_BASE,
+  apiBaseV2: DEFAULT_API_V2_BASE,
   userName: "PC",
   apiKey: ""
 };
@@ -24,9 +32,9 @@ const ALARM_HEARTBEAT = "amazon_lease_heartbeat";
 const ALARM_STATS = "amazon_stats_refresh";
 
 // ---------- utils ----------
-function cleanServerUrl(u) {
+function cleanServerUrl(u, fallback) {
   u = (u || "").trim();
-  if (!u) return DEFAULT_API_BASE;
+  if (!u) return fallback || DEFAULT_API_BASE;
   return u.replace(/\/+$/, "");
 }
 function normIsbn(s) {
@@ -44,6 +52,12 @@ async function apiFetch(path, opts = {}) {
   return fetch(url, Object.assign({}, opts, { headers }));
 }
 
+async function apiFetchV2(path, opts = {}) {
+  const url = `${cfg.apiBaseV2}${path}`;
+  const headers = Object.assign({ "Content-Type": "application/json" }, authHeaders(opts.headers || {}));
+  return fetch(url, Object.assign({}, opts, { headers }));
+}
+
 function persistState() {
   return chrome.storage.local.set({
     bg_state_v1: state,
@@ -57,7 +71,8 @@ function persistState() {
 
 async function loadCfgFromStorage() {
   const got = await chrome.storage.local.get(CFG_KEYS);
-  cfg.apiBase = cleanServerUrl(got.apiBase || DEFAULT_API_BASE);
+  cfg.apiBase = cleanServerUrl(got.apiBase || DEFAULT_API_BASE, DEFAULT_API_BASE);
+  cfg.apiBaseV2 = cleanServerUrl(got.apiBaseV2 || DEFAULT_API_V2_BASE, DEFAULT_API_V2_BASE);
   cfg.userName = (got.userName || "PC").trim() || "PC";
   cfg.apiKey = (got.apiKey || "").trim();
 }
@@ -234,6 +249,17 @@ async function ingest({ data }) {
   }
 }
 
+async function captureV2({ data }) {
+  try {
+    const r = await apiFetchV2("/captures", { method: "POST", body: JSON.stringify({ data }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) return { ok: false, error: j.detail || j.error || "capture_failed", resp: j };
+    return { ok: true, resp: j };
+  } catch (e) {
+    return { ok: false, error: String(e?.message || e) };
+  }
+}
+
 async function dbLookup(isbn) {
   const s = normIsbn(isbn);
   if (!s) return { ok: false, error: "missing_isbn" };
@@ -344,6 +370,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (type === "INGEST") {
       const out = await ingest({ data: payload.data });
+      sendResponse(out);
+      return;
+    }
+
+    if (type === "CAPTURE_V2") {
+      const out = await captureV2({ data: payload.data });
       sendResponse(out);
       return;
     }

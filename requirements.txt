@@ -9,9 +9,13 @@ sqlalchemy>=2.0
 psycopg[binary]>=3.1
 alembic>=1.13
 
+# API
+fastapi>=0.110
+uvicorn>=0.27
+
 # Development
 pytest>=7.4
 pytest-asyncio>=0.21
 ruff>=0.1
 mypy>=1.7
-python-dotenv>=2.0 # para 2.31 de entorno
+python-dotenv>=1.0 # para 2.31 de entorno

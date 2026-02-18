@@ -285,7 +285,8 @@ def build_parser() -> argparse.ArgumentParser:
     # -----------------
     p_val = sub.add_parser("db-validate", help="Ejecuta queries de validacion (conteos/integridad)")
     p_val.add_argument("--db-url", default="", help="DATABASE_URL override (opcional)")
-    p_val.add_argument("--sql", default="app/db/migrations/validation.sql", help="Ruta al SQL de validacion")
+    p_val.add_argument("--sql", default="app/db/migrations/validation.sql", help="Ruta al SQL de validacion (Postgres)")
+    p_val.add_argument("--sqlite-sql", default="app/db/migrations/validation_sqlite.sql", help="Ruta al SQL de validacion (SQLite)")
     p_val.add_argument("--limit", type=int, default=200, help="Limite de filas a imprimir (0 = sin limite)")
     p_val.set_defaults(func=_cmd_db_validate)
 

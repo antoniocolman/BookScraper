@@ -20,3 +20,9 @@ Comandos equivalentes en CLI (recomendado)
 - `amazon-ingest-server`: server HTTP para ingest/enrich Amazon.
 - `export --view`: exporta views (ej. `book_master`).
 - `db --list-views`: lista views de la DB.
+
+API (FastAPI) helpers
+- `start_api.ps1`: levanta la API FastAPI (`API_HOST`/`API_PORT`).
+- `test_api.ps1`: prueba `/health`.
+- `test_api_missing.ps1`: prueba `/missing?limit=N`.
+- `test_api_isbn.ps1`: prueba `/isbn/{isbn}`.

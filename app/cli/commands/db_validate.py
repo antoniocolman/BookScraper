@@ -28,15 +28,23 @@ def _print_rows(cols: List[str], rows: List[Any], limit: int) -> None:
 
 
 def cmd_db_validate(args: argparse.Namespace) -> int:
+    url = args.db_url or get_database_url()
+    engine = create_engine(url, future=True)
+
     sql_path = Path(args.sql)
     if not sql_path.exists():
         raise SystemExit(f"[ERROR] SQL no existe: {sql_path}")
 
-    url = args.db_url or get_database_url()
-    engine = create_engine(url, future=True)
+    sqlite_path = Path(args.sqlite_sql)
+    if not sqlite_path.exists():
+        raise SystemExit(f"[ERROR] SQL sqlite no existe: {sqlite_path}")
 
     with engine.connect() as conn:
-        for stmt in _split_sql(_read_sql(sql_path)):
+        sql_to_use = sql_path
+        if conn.engine.dialect.name == "sqlite":
+            sql_to_use = sqlite_path
+
+        for stmt in _split_sql(_read_sql(sql_to_use)):
             if not stmt:
                 continue
             result = conn.execute(text(stmt))
@@ -51,7 +59,8 @@ def cmd_db_validate(args: argparse.Namespace) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Ejecuta queries de validacion (conteos/integridad)")
     ap.add_argument("--db-url", default="", help="DATABASE_URL override (opcional)")
-    ap.add_argument("--sql", default="app/db/migrations/validation.sql", help="Ruta al SQL de validacion")
+    ap.add_argument("--sql", default="app/db/migrations/validation.sql", help="Ruta al SQL de validacion (Postgres)")
+    ap.add_argument("--sqlite-sql", default="app/db/migrations/validation_sqlite.sql", help="Ruta al SQL de validacion (SQLite)")
     ap.add_argument("--limit", type=int, default=200, help="Limite de filas a imprimir (0 = sin limite)")
     args = ap.parse_args()
     return cmd_db_validate(args)

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -31,6 +31,7 @@
     #dbPreview .muted { opacity:.75; font-size:12px; }
     #dbPreview .kv { font-size:12px; margin-top:4px; }
     #dbPreview img.cover { width:62px; height:auto; border-radius:8px; border:1px solid #ddd; }
+    #apiMissingBox { background:#fff7f0; border:1px solid #ffe1c6; padding:8px; border-radius:10px; margin-top:8px; }
   </style>
 </head>
 <body>
@@ -40,7 +41,7 @@
     <div class="pill" id="modePill">mode: ?</div>
   </div>
 
-  <div class="small" id="connLine">—</div>
+  <div class="small" id="connLine">â€”</div>
 
   <div class="tabs">
     <button class="tabbtn active" data-tab="fifo">FIFO</button>
@@ -51,9 +52,15 @@
   <!-- FIFO -->
   <div class="panel active" id="tab-fifo">
     <div class="small" id="qCounts">Remaining: ? | Done: ? | Skip: ? | InProg: ? | Total: ?</div>
-    <div class="small" id="qStatus">Sin item. Tocá “Traer siguiente”.</div>
+    <div class="small" id="qStatus">Sin item. TocÃ¡ â€œTraer siguienteâ€.</div>
 
     <div id="dbPreview"></div>
+    <div id="apiMissingBox" class="small">API missing: â€”</div>
+
+    <div class="row">
+      <button id="btnFetchMissing">Ver faltantes (API)</button>
+      <button id="btnFetchMissingItem">Faltantes (item)</button>
+    </div>
 
     <pre id="qItem">(sin item)</pre>
 
@@ -72,19 +79,23 @@
 
   <!-- Captura -->
   <div class="panel" id="tab-capture">
-    <button id="btnCapture">Capturar (página actual)</button>
+    <button id="btnCapture">Capturar (pÃ¡gina actual)</button>
 
     <div class="row">
       <button id="btnSend" disabled>Enviar a DB</button>
-      <button id="btnEnrichSingle" disabled>Enriquecer (última)</button>
+      <button id="btnEnrichSingle" disabled>Enriquecer (Ãºltima)</button>
     </div>
 
     <div class="row">
+      <button id="btnSendV2" disabled>Enviar a API</button>
       <button id="btnCopy" disabled>Copiar JSON</button>
+    </div>
+
+    <div class="row">
       <button id="btnDownload" disabled>Descargar JSON</button>
     </div>
 
-    <div class="small" id="status">Abrí un libro en Amazon (URL /dp/...).</div>
+    <div class="small" id="status">AbrÃ­ un libro en Amazon (URL /dp/...).</div>
     <pre id="out">(sin captura)</pre>
   </div>
 
@@ -93,16 +104,22 @@
     <label>Server URL</label>
     <input id="cfgServer" placeholder="http://127.0.0.1:8765" />
 
-    <label>Usuario / Worker</label>
-    <input id="cfgUser" placeholder="PC-Rudy" />
-
-    <label>API Key (si mode=lan)</label>
-    <input id="cfgKey" type="password" placeholder="(según server)" />
+    <label>API URL (FastAPI)</label>
+    <input id="cfgServerV2" placeholder="http://127.0.0.1:8080" />
+    <div class="small" id="apiConnLine">â€”</div>
 
     <div class="row">
       <button id="btnSaveCfg">Guardar</button>
       <button id="btnTestCfg">Test</button>
     </div>
+
+    <button id="btnTestApi">Test API</button>
+
+    <label>Usuario / Worker</label>
+    <input id="cfgUser" placeholder="PC-Rudy" />
+
+    <label>API Key (si mode=lan)</label>
+    <input id="cfgKey" type="password" placeholder="(segÃºn server)" />
 
     <div class="small" id="modePillLine">mode: ?</div>
 
@@ -121,7 +138,7 @@
       <button id="btnResetState">Reset state</button>
     </div>
 
-    <div class="small" id="cfgMsg">—</div>
+    <div class="small" id="cfgMsg">â€”</div>
   </div>
 
 <script src="popup.js"></script>
