@@ -15,6 +15,7 @@ STATE_DIR: Final[Path] = DATA_DIR / "state"
 
 DB_PATH: Final[Path] = Path(os.getenv("BOOKSEARCH_DB_PATH", str(DATA_DIR / "booksearchv2.db")))
 SITE_PARAMS_PATH: Final[Path] = DATA_DIR / "site_params.json"
+DATABASE_URL: Final[str] = os.getenv("DATABASE_URL", "")
 
 for _dir in [DATA_DIR, EXPORTS_DIR, QUERIES_DIR, LOGS_DIR, STATE_DIR]:
     _dir.mkdir(parents=True, exist_ok=True)

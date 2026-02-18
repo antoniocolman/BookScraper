@@ -4,6 +4,11 @@ selectolax>=0.3
 beautifulsoup4>=4.12
 lxml>=5.0
 
+# Database (SQLite/Postgres migration)
+sqlalchemy>=2.0
+psycopg[binary]>=3.1
+alembic>=1.13
+
 # Development
 pytest>=7.4
 pytest-asyncio>=0.21
